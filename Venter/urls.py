@@ -33,4 +33,20 @@ urlpatterns = [
     path('domain_contents/', views.domain_contents, name='domain_contents'),
 
     path('predict_csv/<int:pk>', views.predict_csv, name='predict_csv'),
+
+    path('password_reset/',
+         auth.views.PasswordResetView.as_view(template_name='Venter/password_reset_form.html'),
+         name='password_reset'),
+
+    path('password_reset_done/',
+         auth.views.PasswordResetDoneView.as_view(template_name='Venter/password_reset_done.html'),
+         name='password_reset_done'),
+
+    path('reset/<uidb64>/<token>/',
+         auth.views.PasswordResetConfirmView.as_view(template_name='Venter/password_reset_confirm.html'),
+         name='password_reset_confirm'),
+         
+    path('password_reset_complete/',
+         auth.views.PasswordResetCompleteView.as_view(template_name='Venter/password_reset_complete.html'),
+         name='password_reset_complete'),
 ]

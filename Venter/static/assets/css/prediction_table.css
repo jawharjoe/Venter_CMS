@@ -147,28 +147,38 @@ td.table-cell-cat{
 .modal-body {
     height: 180px;
     background-color: #32bc65;
-  }   
+}   
   
-  .file_logo-table{
+.file_logo-table{
     width:150px;
     height:140px;
-  }
-  
-  .modal-footer{
+}
+
+.modal-footer{
     height: 150px;
     background-color: white;
-  }
-  
-  .footer-center{
+}
+
+.footer-center{
     display: block;
     margin-left: auto;
     margin-right: auto;
-  }
+}
   
-  .p1-update{
+.p1-update{
     color: grey;
     font-family: 'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;
     font-size: 20px;
-  }
+}
+
+.ward{
+    display:inline-block;
+    color: darkblue;
+}
+
+.date{
+    display:inline-block;
+    color: brown;
+}
 
 

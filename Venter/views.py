@@ -3,6 +3,7 @@ import json
 import os
 import jsonpickle
 import pandas as pd
+import re
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.models import Permission, User
@@ -366,6 +367,8 @@ def domain_contents(request):
         'domain_stats': jsonpickle.encode(domain_stats), 'chart_domain': domain_name
     })
 
+file_saved_status = False
+
 @login_required
 @require_http_methods(["GET", "POST"])
 def predict_csv(request, pk):
@@ -380,7 +383,9 @@ def predict_csv(request, pk):
         1) dict_data stores the result json data from the results.json file already created from the ML model
         2) prediction_table.html template is rendered
     """
+    global file_saved_status
     filemeta = File.objects.get(pk=pk)
+    custom_category_list = []
     if not filemeta.has_prediction:
         output_directory_path = os.path.join(MEDIA_ROOT, f'{filemeta.uploaded_by.organisation_name}/{filemeta.uploaded_by.user.username}/{filemeta.uploaded_date.date()}/output')
 
@@ -395,6 +400,11 @@ def predict_csv(request, pk):
         csvfile = pd.read_csv(input_file_path, sep=',', header=0, encoding='latin1')
 
         complaint_description = list(csvfile['complaint_description'])
+        ward_name = list(csvfile[' ward_name'])
+        date_created = []
+        for x in list(csvfile['complaint_created']):
+            y = x.split(' ')[0]
+            date_created.append(y)
 
         dict_list = []
 
@@ -406,7 +416,7 @@ def predict_csv(request, pk):
 
         cats = model.get_top_3_cats_with_prob(complaint_description)
 
-        for row, complaint, scores in zip(csvfile.iterrows(), complaint_description, cats):
+        for row, complaint, scores, ward, date in zip(csvfile.iterrows(), complaint_description, cats, ward_name, date_created):
             row_dict = {}
             index, data = row
             row_dict['index'] = index
@@ -415,6 +425,8 @@ def predict_csv(request, pk):
                 row_dict['problem_description'] = complaint
                 row_dict['category'] = scores
                 row_dict['highest_confidence'] = list(row_dict['category'].values())[0]
+                row_dict['ward_name'] = ward
+                row_dict['date_created'] = date
             else:
                 continue
                 # data = data.dropna(subset=["text"])
@@ -433,7 +445,7 @@ def predict_csv(request, pk):
         print('Done.')
 
         with open(input_file_path, 'r', encoding='latin1') as f1:
-            with open(output_file_path_csv, 'w',  encoding='latin1') as f2:
+            with open(output_file_path_csv, 'w', encoding='latin1') as f2:
                 for line in f1:
                     f2.write(line)
 
@@ -442,29 +454,71 @@ def predict_csv(request, pk):
         filemeta.save()
     else:
         dict_list = json.load(filemeta.output_file_json)
+        if file_saved_status:
+            output_file_path = filemeta.output_file_xlsx.path
+            csvfile = pd.read_csv(output_file_path, sep=',', header=0, encoding='latin1')
+            temp1 = list(csvfile['Predicted_Category'])
+            for sublist in temp1:
+                temp2 = sublist.split(",")
+                temp3 = [re.sub(r"([\[\]\'])", "", x) for x in temp2]
+                temp4 = [x.lstrip() for x in temp3]
+                temp5 = [x.rstrip() for x in temp4]
+                custom_sublist = temp5
+                custom_category_list.append(custom_sublist)
 
+            print("=========================POPULATING DICT LIST WITH CUSTOM CATEGORIES================")
+            for item, cat in zip(dict_list, custom_category_list):
+                item['category'] = cat
+
+
+    input_file_path = filemeta.input_file.path
+    csvfile = pd.read_csv(input_file_path, sep=',', header=0, encoding='latin1')
+    temp_col1 = list(csvfile.columns)
+    print("------------INITIAL CSV COL HEADS-------")
+    for col in temp_col1:
+        print(col)
+
+    temp_col2 = [x.lstrip() for x in temp_col1]
+    csvfile_columns = [x.rstrip() for x in temp_col2]
+    csvfile = pd.read_csv(input_file_path, sep=',', header=0, encoding='latin1', names=csvfile_columns)
+    temp_col4 = list(csvfile.columns)
+    
+    print("---------------CHANGED CSV COL HEADS--------")
+    for col in temp_col4:
+        print(col)
     # preparing category list based on organisation name
     if str(request.user.profile.organisation_name) == 'ICMC':
         category_queryset = Category.objects.filter(organisation_name='ICMC').values_list('category', flat=True)
         category_list = list(category_queryset)
+        date_created = []
+        for x in list(csvfile['complaint_created']):
+            y = x.split(' ')[0]
+            date_created.append(y)
+        date_list = list(set(date_created))
+        ward_name = list(csvfile['ward_name'])
+        ward_list = list(set(ward_name))
     elif str(request.user.profile.organisation_name) == 'SpeakUp':
         category_queryset = Category.objects.filter(organisation_name='SpeakUp').values_list('category', flat=True)
         category_list = list(category_queryset)
 
-    return render(request, './Venter/prediction_table.html', {'dict_list': dict_list, 'category_list': category_list, 'filemeta': filemeta})
+    return render(request, './Venter/prediction_table.html', {'dict_list': dict_list, 'category_list': category_list, 'filemeta': filemeta, 'file_saved_status': file_saved_status, 'ward_list': ward_list, 'date_list': date_list})
 
 @login_required
 @require_http_methods(["POST"])
 def download_table(request, pk):
     """
     View logic to prepare a .csv output file for files uploaded by ICMC users
-        1) category_rec stores a two-dimensional list for all the custom categories selected by the user
+        1) custom_category_list stores a two-dimensional list for all the custom categories selected by the user
         2) If 'Predicted_Category' column exists in results.csv file, it is dropped
         3) New category list is populated in the results.csv file and results.csv file is saved in the database
         4) Predicted_table template is rendered and user downloads the results.csv file(from dashboard.html)
     """
+    global custom_category_list, file_saved_status
     filemeta = File.objects.get(pk=pk)
-    category_rec = json.loads(request.POST['category_input'])
+    custom_category_list = json.loads(request.POST['category_input'])
+    status = request.POST['file_saved_status']
+    if status=="True":
+        file_saved_status = True
 
     output_csv_file_path = filemeta.output_file_xlsx.path
 
@@ -472,8 +526,8 @@ def download_table(request, pk):
 
     if 'Predicted_Category' in csv_file.columns:
         csv_file = csv_file.drop("Predicted_Category", axis=1)
-        
-    csv_file.insert(0, "Predicted_Category", category_rec)
+
+    csv_file.insert(0, "Predicted_Category", custom_category_list)
     csv_file.to_csv(output_csv_file_path, index=False)
 
     filemeta.output_file_xlsx = output_csv_file_path

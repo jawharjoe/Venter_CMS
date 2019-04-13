@@ -15,6 +15,14 @@
 </script>
 {% endif %} 
 
+<!-- {% for item in dict_list %}
+    <script>
+        console.log("-----------------EXTRA INFORMATION-----");
+        console.log('{{item.problem_description}}');
+        console.log('{{item.ward_name}}');
+        console.log('{{item.date_created}}');
+    </script>    
+{% endfor %} -->
 
 <script>
     function toggleField(hideObj,showObj){
@@ -112,6 +120,7 @@
             category_list.push(temp);
         }) 
         document.getElementById('category_input').value = JSON.stringify(category_list);
+        document.getElementById('file_saved_status').value = "True";
         document.getElementById('category_form').submit();
     }
 
@@ -120,6 +129,27 @@
             var value = $(this).val().toLowerCase();
             $("#tbody_table tr").filter(function() {
                 $(this).toggle($(this).text().toLowerCase().indexOf(value) > -1)
+            });
+        });
+
+        $("#multi_filter_btn").on("click", function() {
+            var cat = $('#category').find(":selected").text();
+            // var cat = 'Municipal Land - Road Footpath Strom Water Drain';
+            var pl = $('#place').find(":selected").text();
+            var d = $('#date').find(":selected").text();
+            if(pl == 'All'){
+                pl='';
+            }
+            if(d == 'All')
+            {
+                d='';
+            }
+            if(cat == 'All')
+            {
+                cat='';
+            }
+            $("#tbody_table tr").filter(function() {
+                $(this).toggle($(this).text().indexOf(d) > -1 && $(this).text().indexOf(pl) > -1 && $(this).toggle($(this).find("ul").text().indexOf(cat) > -1))
             });
         });
     });
@@ -192,12 +222,43 @@
             <div class="col-sm-1">
                 <form method="post" id="category_form" action="{% url 'download_table' filemeta.pk %}">
                     {% csrf_token %}
+                    <input type="hidden" id="file_saved_status" name="file_saved_status" value=""/>
                     <input type="hidden" id="category_input" name="category_input" value=""/>
                     <button type="submit" class="btn btn-primary" onclick="save_file();">Save File &nbsp;<i class="fa fa-save save-fa" aria-hidden="true"></i>
                     </button>
                 </form>    
             </div>
         </div><br>
+
+        <div class="selects-container" style="display:inline-block;">
+            Category:
+            <select name="category" id="category">
+                <option>All</option>
+                {% for item in category_list %}
+                    <option value='{{ item }}' >{{ item }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="selects-container" style="display:inline-block;">
+            Place:
+            <select name="place" id="place">
+                <option>All</option>
+                {% for item in ward_list %}
+                    <option value='{{ item }}'>{{ item }}</option>
+                {% endfor %}
+            </select>
+        </div>&nbsp;&nbsp;
+        <div class="selects-container" style="display:inline-block;">
+            Date:
+            <select name="date" id="date">
+                <option>All</option>
+                {% for item in date_list %}
+                    <option value='{{ item }}'>{{ item }}</option>
+                {% endfor %}
+            </select>
+        </div>&nbsp;&nbsp;
+        <button type="button" class="btn btn-primary" id="multi_filter_btn">Submit</button>
+        <br><br>
 
         <div id="container-table">
             <table class="table table-bordered table-striped" id="main_content_table">
@@ -228,14 +289,38 @@
                         </td>
                         <td class="table-cell-cat">
                             <script>colorcode("{{item.highest_confidence}}", "td{{ item.index }}");</script>  
-                                    <ul class="category_list" id="ul{{ item.index }}">
-                                        {% for cat, prob in item.category.items %}
-                                        <div class="input-group">
-                                            <li class="change-selection-btn">
-                                                {{ cat }} ({{prob}})%
-                                            </li>
-                                        </div>    
-                                        {% endfor %}
+                                    <ul class="category_list" id="ul{{ item.index }}">   
+                                        {% if file_saved_status %}
+                                            {% for cat in item.category %}
+                                                {% if cat == "" %}
+                                                    continue
+                                                {% else %}
+                                                    {% if "%" in cat  %}
+                                                        <div class="input-group">
+                                                            <li class="change-selection-btn">
+                                                                {{ cat }}
+                                                            </li>
+                                                        </div> 
+                                                    {% else %}  
+                                                        <div class="input-group">
+                                                            <li>{{ cat }}&nbsp;&nbsp;
+                                                                <button type="button" class="delete-custom-category-btn">
+                                                                    <i class="fa fa-times delete-fa" aria-hidden="true"></i>
+                                                                </button>
+                                                            </li>
+                                                        </div>
+                                                    {% endif %} 
+                                                {% endif %} 
+                                            {% endfor %}
+                                        {% else %}
+                                            {% for cat, prob in item.category.items %}
+                                            <div class="input-group">
+                                                <li class="change-selection-btn">
+                                                    {{ cat }} ({{prob}})%
+                                                </li>
+                                            </div>    
+                                            {% endfor %}
+                                        {% endif %}
                                     </ul> 
                                     <select name="category" id="select{{ item.index }}" class="select_cat" onchange="if(this.options[this.selectedIndex].value=='customOption'){toggleField(this,this.nextSibling); this.selectedIndex='0';}">
                                         <option value="0">---- select ----</option>
@@ -252,6 +337,9 @@
                         </td>
                         <td class="table-cell-problem" id="table-cell-problem">
                             {{ item.problem_description }}
+                            <br>
+                            <div class="ward">{{item.ward_name}} </div>
+                            <div class="date">{{item.date_created}} </div>
                         </td>
                     </tr>
                     {% endfor %}

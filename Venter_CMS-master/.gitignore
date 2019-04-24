@@ -6,4 +6,5 @@ db.sqlite3
 media/**
 htmlcov/
 stats.txt
-venv/git 
+venv/
+.vscode/

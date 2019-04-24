@@ -7,3 +7,5 @@ media/**
 htmlcov/
 stats.txt
 venv/git 
+../venv/*
+../.vscode/

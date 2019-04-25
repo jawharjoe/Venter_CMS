@@ -127,6 +127,7 @@
 
     function save_file()
     {
+        console.log("-----------------------------inside save_file() in template---------------------------");
         var dict = {}
         let sorted_category_list = []
         let category_input = []
@@ -139,6 +140,7 @@
                 if($(this).children().attr("style") != "text-decoration:line-through"){
                     let cat = $(this).text();
                     cat = cat.replace(/\s\s+/g, ' ');
+                    console.log("<li> qualified: ", cat);
                     temp.push(cat);
                 }
             })
@@ -150,6 +152,10 @@
         {
             sorted_category_list.push(dict[row])
         }
+
+        console.log("category_input list");
+        console.log(typeof(category_input));
+        console.log(category_input);
         document.getElementById('sorted_category').value = JSON.stringify(sorted_category_list);
         document.getElementById('category_input').value = JSON.stringify(category_input);
         document.getElementById('file_saved_status').value = "True";
@@ -266,7 +272,7 @@
                     <input type="hidden" id="category_input" name="category_input" value=""/>
                     <button type="button" class="btn btn-primary" onclick="save_file();">Save File &nbsp;<i class="fa fa-save save-fa" aria-hidden="true"></i>
                     </button>
-                </form>    
+                </form>
             </div>
         </div><br>
 
@@ -335,20 +341,20 @@
                                                 {% if cat == "" %}
                                                     <!--continue-->
                                                 {% else %}
-                                                    
+                                                    <div class="input-group">
                                                         <li class="change-selection-btn">
                                                             {{ cat }}
                                                         </li>
-                                                       
+                                                    </div>   
                                                 {% endif %} 
                                             {% endfor %}
                                         {% else %}
                                             {% for cat, prob in item.category.items %}
-                                                
+                                            <div class="input-group">
                                                     <li class="change-selection-btn" >
                                                         {{ cat }} ({{prob}})%
                                                     </li>
-                                                
+                                            </div>    
                                             {% endfor %}
                                         {% endif %}
                                     </ul> 

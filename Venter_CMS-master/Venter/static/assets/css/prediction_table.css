@@ -184,8 +184,8 @@ td.table-cell-cat{
 div.sidebar-wrapper li.visualization-item{
     display: block;
 }
-
+/* 
 [draggable] {
     user-select: none;
-}
+} */
 

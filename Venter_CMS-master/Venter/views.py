@@ -377,7 +377,7 @@ def domain_contents(request):
     })
 
 
-file_saved_status = False
+# file_saved_status = False
 custom_category_list = []
 
 @login_required
@@ -394,10 +394,11 @@ def predict_csv(request, pk):
         1) dict_data stores the result json data from the results.json file already created from the ML model
         2) prediction_table.html template is rendered
     """
-    global file_saved_status, custom_category_list
+    global custom_category_list
     filemeta = File.objects.get(pk=pk)
     
     if not filemeta.has_prediction:
+        print("file NO PREDICTION")
         output_directory_path = os.path.join(MEDIA_ROOT, f'{filemeta.uploaded_by.organisation_name}/{filemeta.uploaded_by.user.username}/{filemeta.uploaded_date.date()}/output')
         if not os.path.exists(output_directory_path):
             os.makedirs(output_directory_path)
@@ -456,6 +457,12 @@ def predict_csv(request, pk):
         unsorted_dict_list = dict_list
         dict_list = sorted(dict_list, key=lambda k: k['highest_confidence'], reverse=True)
 
+        print("------------------------------------dictionry ready in IF PART, contents:-------------------------")
+        for item in dict_list:
+            for k,v in item['category'].items():
+                print(k)
+                print(v)
+
         if dict_list:
             filemeta.has_prediction = True
 
@@ -464,8 +471,8 @@ def predict_csv(request, pk):
         print('JSON output saved.')
         print('Done.')
 
-        with open(input_file_path, 'r', encoding='latin1') as f1:
-            with open(output_file_path_csv, 'w', encoding='latin1') as f2:
+        with open(input_file_path, 'r', encoding="latin1") as f1:
+            with open(output_file_path_csv, 'w', encoding="latin1") as f2:
                 for line in f1:
                     f2.write(line)
 
@@ -484,6 +491,7 @@ def predict_csv(request, pk):
         filemeta.output_file_xlsx = output_file_path_csv
         filemeta.save()
     else:
+        print("file already predicted")
         dict_list = json.load(filemeta.output_file_json)
 
         input_file_path = filemeta.input_file.path
@@ -498,9 +506,16 @@ def predict_csv(request, pk):
         ward_name = list(csvfile['ward_name'])
         ward_list = list(set(ward_name))
 
-        if file_saved_status:
+        print("--------------------inside predict_Csv, file has alreadybeen saved, now retieving custom cat list------------------------")
+        print("..............custom cat list 2.................")
+        for j in custom_category_list:
+            print(type(j))
+            print(j)
+        if filemeta.file_saved_status:
+            print("file already saved, getting custom cat list")
             for item, cat in zip(dict_list, custom_category_list):
                 item['category'] = cat
+        print("------------------------------------dictionry WITH CUSTOM CAT LIST, contents:-------------------------")   
 
     # preparing category list based on organisation name
     if str(request.user.profile.organisation_name) == 'ICMC':
@@ -525,6 +540,11 @@ def download_table(request, pk):
     filemeta = File.objects.get(pk=pk)
     sorted_category_list = json.loads(request.POST['sorted_category'])
     custom_category_list = json.loads(request.POST['category_input'])
+
+    print(type(custom_category_list))
+    for i in custom_category_list:
+        print(type(i))
+        print(i)
     status = request.POST['file_saved_status']
     new_sorted_category_list = []
 
@@ -538,7 +558,7 @@ def download_table(request, pk):
     csv_file = pd.read_csv(output_csv_file_path, sep=',', header=0)
 
     if status == "True":
-        file_saved_status = True
+        filemeta.file_saved_status = True
         if 'Predicted_Category' in csv_file.columns:
             csv_file = csv_file.drop("Predicted_Category", axis=1)
         csv_file.insert(0, "Predicted_Category", new_sorted_category_list)

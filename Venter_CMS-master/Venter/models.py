@@ -139,6 +139,9 @@ class File(models.Model):
     has_prediction = models.BooleanField(
         default=False,
     )
+    file_saved_status = models.BooleanField(
+        default=False,
+    )
     output_file_json = models.FileField(blank=True)
     output_file_xlsx = models.FileField(blank=True)
 
